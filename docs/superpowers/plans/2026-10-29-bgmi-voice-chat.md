@@ -187,7 +187,7 @@ Run: `npm test --workspace @bgmi/contracts && npm test --workspace @bgmi/server 
 
 Expected: all tests pass; the client-facing response never contains LiveKit API credentials.
 
-- [ ] **Step 9: Commit the room API**
+- [x] **Step 9: Commit the room API**
 
 ```bash
 git add package-lock.json packages/contracts server docs/superpowers/plans/2026-10-29-bgmi-voice-chat.md
@@ -197,60 +197,69 @@ git commit -m "feat: add four-person LiveKit room API"
 ## Task 3: Build Guest Create/Join Flow in Expo
 
 **Files:**
+- Modify: `package-lock.json`
+- Modify: `mobile/package.json` — add `@bgmi/contracts` and SDK-compatible `expo-clipboard`.
 - Create: `mobile/src/api/room-api.ts`
 - Create: `mobile/src/api/room-api.test.ts`
-- Create: `mobile/src/app/index.tsx`
+- Modify: `mobile/src/app/index.tsx`
 - Create: `mobile/src/app/join/[roomId].tsx`
+- Create: `mobile/src/app/room/[roomId].tsx` — credential/invite placeholder, replaced with the live room in Task 4.
+- Modify: `mobile/src/app/_layout.tsx`
+- Modify: `mobile/src/app/__tests__/home-screen.test.tsx`
+- Create: `mobile/src/app/__tests__/join-screen.test.tsx`
 - Create: `mobile/src/features/room/JoinRoomForm.tsx`
 - Create: `mobile/src/features/room/JoinRoomForm.test.tsx`
+- Create: `mobile/src/features/room/RoomSessionContext.tsx`
+- Create: `mobile/src/features/room/RoomSessionContext.test.tsx`
 - Create: `mobile/src/features/room/RoomState.ts`
 - Create: `mobile/src/features/room/RoomState.test.ts`
-- Modify: `mobile/src/app/_layout.tsx`
 
 **Interfaces:**
 - `RoomApi.createRoom(): Promise<CreateRoomResponse>`.
 - `RoomApi.joinRoom(roomId: string, displayName: string): Promise<JoinRoomResponse>`.
 - `RoomState = "idle" | "creating" | "joining" | "connected" | "connected_receive_only" | "reconnecting" | "error"`.
+- `RoomSession = { credentials: JoinRoomResponse; inviteLink: string }`.
+- `RoomSessionContext` exposes `{ session: RoomSession | null; setSession(session: RoomSession): void; clearSession(): void }` to the room route.
 - Consumes shared `@bgmi/contracts` schemas from Task 2; produces typed room credentials for Task 4.
 
-- [ ] **Step 1: Write failing API-client tests**
+- [x] **Step 1: Write failing API-client tests**
 
 Test that create and join requests use the `/v1` endpoints, send JSON, parse valid responses, and surface typed room-full, invalid-invite, and service-error responses without exposing token details in user-facing error text. Test that the invite URI is constructed from the configured scheme and `/join/<roomId>` path.
 
-- [ ] **Step 2: Run API-client tests and verify they fail**
+- [x] **Step 2: Run API-client tests and verify they fail**
 
 Run: `npm test --workspace @bgmi/mobile -- room-api`
 
 Expected: FAIL because `RoomApi` does not exist.
 
-- [ ] **Step 3: Implement the typed API client**
+- [x] **Step 3: Implement the typed API client**
 
 Read the API base URL from `EXPO_PUBLIC_API_URL`; validate responses with shared schemas and map known error codes to typed errors.
 
-- [ ] **Step 4: Write failing room-state and form tests**
+- [x] **Step 4: Write failing room-state and form tests**
 
-Test display-name trimming/validation, create/join loading states, a full-room error, an invalid invite error, and the transition from `connected` to `connected_receive_only`. Assert no join request is made for a blank display name.
+Test display-name trimming/validation, create/join loading states, a full-room error, an invalid invite error, the transition from `connected` to `connected_receive_only`, and session set/clear behavior. Assert no join request is made for a blank display name.
 
-- [ ] **Step 5: Run app tests and verify they fail**
+- [x] **Step 5: Run app tests and verify they fail**
 
 Run: `npm test --workspace @bgmi/mobile -- JoinRoomForm`
 
 Expected: FAIL because join screens and state transitions are not implemented.
 
-- [ ] **Step 6: Implement home, invite join, and room-state UI**
+- [x] **Step 6: Implement home, invite join, and room-state UI**
 
-Add create-room and join-code entry on the home screen. Build the share URI with Expo Linking's `createURL` for `/join/<roomId>` and the configured `zero-ji-ka-hukum` scheme; show a share action and a copyable room ID. Handle that deep link in `src/app/join/[roomId].tsx` and let the guest enter a display name. Once connected, request microphone permission and publish audio; if permission is denied, stay in the room receive-only and show an actionable Settings path. Display clear room-full, unknown-invite, network, and microphone-permission states.
+Add create-room and join-code entry on the home screen; require a display name before either action. For a new room, call create then join so the creator receives a guest token too. Build the invite URI with Expo Linking's `createURL` for `/join/<roomId>` and the configured `zero-ji-ka-hukum` scheme; show share and copy controls. Handle deep links in `src/app/join/[roomId].tsx`; after a successful API join, store credentials and invite URI in `RoomSessionContext` and navigate to the room placeholder. The placeholder shows the room code/invite, not a false voice-connected status; Task 4 adds voice, mic permission, receive-only, and reconnect behavior. Display clear room-full, unknown-invite, and network errors.
 
-- [ ] **Step 7: Run mobile tests and static checks**
+- [x] **Step 7: Run mobile tests and static checks**
 
-Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint`
+Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint && (cd mobile && npx expo export --platform ios)`
 
 Expected: PASS; app routes handle create/join success and error states.
 
 - [ ] **Step 8: Commit create/join flow**
 
 ```bash
-git add mobile
+git add mobile package-lock.json docs/superpowers/plans/2026-10-29-bgmi-voice-chat.md
 git commit -m "feat: add guest room create and join flow"
 ```
 
@@ -263,6 +272,7 @@ git commit -m "feat: add guest room create and join flow"
 - Create: `mobile/src/features/room/RoomScreen.test.tsx`
 - Create: `mobile/src/features/room/ParticipantRow.tsx`
 - Modify: `mobile/src/app/room/[roomId].tsx`
+- Consume: `mobile/src/features/room/RoomSessionContext.tsx` credentials from Task 3.
 - Modify: `mobile/src/app/_layout.tsx`
 
 **Interfaces:**
@@ -299,7 +309,7 @@ Test that the screen lists connected participants, shows mute/unmute state, togg
 
 Build a focused call UI with connection status, participant rows, per-person volume sliders, one local mute control, and leave. Avoid adding lobby, chat, video, or other social features.
 
-- [ ] **Step 7: Run mobile tests and static checks**
+- [x] **Step 7: Run mobile tests and static checks**
 
 Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint`
 
@@ -308,7 +318,7 @@ Expected: PASS, including participant-isolated volume and reconnect state tests.
 - [ ] **Step 8: Commit voice integration and controls**
 
 ```bash
-git add mobile
+git add mobile package-lock.json docs/superpowers/plans/2026-10-29-bgmi-voice-chat.md
 git commit -m "feat: add LiveKit voice room controls"
 ```
 
