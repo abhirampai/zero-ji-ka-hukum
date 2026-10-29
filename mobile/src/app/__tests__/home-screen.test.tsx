@@ -56,6 +56,20 @@ describe('HomeScreen', () => {
     delete process.env.EXPO_PUBLIC_API_URL;
   });
 
+  it('uses the non-deprecated safe-area layout', async () => {
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await render(
+      <RoomSessionProvider>
+        <HomeScreen />
+      </RoomSessionProvider>,
+    );
+
+    expect(warning).not.toHaveBeenCalledWith(
+      expect.stringContaining('SafeAreaView has been deprecated'),
+    );
+    warning.mockRestore();
+  });
+
   it('shows the configured app name', async () => {
     const screen = await render(
       <RoomSessionProvider>

@@ -252,11 +252,11 @@ Add create-room and join-code entry on the home screen; require a display name b
 
 - [x] **Step 7: Run mobile tests and static checks**
 
-Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint && (cd mobile && npx expo export --platform ios)`
+Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint && (cd mobile && npx expo install --check && npx expo export --platform ios)`
 
 Expected: PASS; app routes handle create/join success and error states.
 
-- [ ] **Step 8: Commit create/join flow**
+- [x] **Step 8: Commit create/join flow**
 
 ```bash
 git add mobile package-lock.json docs/superpowers/plans/2026-10-29-bgmi-voice-chat.md
@@ -268,12 +268,17 @@ git commit -m "feat: add guest room create and join flow"
 **Files:**
 - Create: `mobile/src/features/room/room-connection.ts`
 - Create: `mobile/src/features/room/room-connection.test.ts`
+- Create: `mobile/src/features/room/livekit-room-driver.ts`
+- Create: `mobile/src/features/room/livekit-room-driver.test.ts`
 - Create: `mobile/src/features/room/RoomScreen.tsx`
 - Create: `mobile/src/features/room/RoomScreen.test.tsx`
 - Create: `mobile/src/features/room/ParticipantRow.tsx`
 - Modify: `mobile/src/app/room/[roomId].tsx`
+- Modify: `mobile/app.json` — ensure LiveKit Expo config plugins are registered.
+- Modify: `mobile/src/app/_layout.tsx` — register LiveKit WebRTC globals once.
+- Modify: `mobile/package.json` and `package-lock.json` — LiveKit SDK and native slider.
+- Modify: `mobile/jest.config.js` — resolve one React instance for test rendering.
 - Consume: `mobile/src/features/room/RoomSessionContext.tsx` credentials from Task 3.
-- Modify: `mobile/src/app/_layout.tsx`
 
 **Interfaces:**
 - `RoomConnection.connect(credentials: JoinRoomResponse): Promise<void>`.
@@ -282,36 +287,38 @@ git commit -m "feat: add guest room create and join flow"
 - `RoomConnection.disconnect(): Promise<void>`.
 - `RoomConnection` emits room connection state and participants `{ identity: string; displayName: string; isMicrophoneEnabled: boolean }`.
   - `connect` connects and attempts to enable the local microphone; a denied permission leaves the participant connected receive-only and emits `connected_receive_only`.
+- `RoomConnection.getSnapshot(): RoomConnectionSnapshot` and `RoomConnection.subscribe(listener): () => void` expose observable state to the route.
+- `LiveKitRoomDriver` isolates native LiveKit/AudioSession operations behind the interface consumed by `RoomConnection`.
 
-- [ ] **Step 1: Write failing room-connection tests using a fake LiveKit room**
+- [x] **Step 1: Write failing room-connection tests using a fake LiveKit room**
 
-Test connect success/failure, disconnect, microphone toggle, participant updates, `reconnecting` state, per-participant volume clamping, a LiveKit capacity rejection mapped to `room_full`, and a microphone permission rejection mapped to a receive-only state; changing one participant's volume must not change another's.
+Test connect success/failure, disconnect, microphone toggle, participant updates, `reconnecting` state, per-participant volume clamping, a LiveKit capacity rejection mapped to `room_full`, and a microphone permission rejection mapped to a receive-only state; changing one participant's volume must not change another's. Test the native driver starts/stops the LiveKit audio session with the room and applies per-track volume without changing another participant's audio gain.
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
-Run: `npm test --workspace @bgmi/mobile -- room-connection`
+Run: `npm test --workspace @bgmi/mobile -- room-connection && npm test --workspace @bgmi/mobile -- livekit-room-driver`
 
 Expected: FAIL because the room connection adapter does not exist.
 
-- [ ] **Step 3: Add LiveKit Expo dependencies and native initialization**
+- [x] **Step 3: Add LiveKit Expo dependencies and native initialization**
 
-Install `livekit-client`, `@livekit/react-native`, `@livekit/react-native-webrtc`, `@livekit/react-native-expo-plugin`, and `@config-plugins/react-native-webrtc` using `npx expo install`; register WebRTC globals once during app initialization and start/stop the LiveKit audio session with room lifecycle.
+Install `expo-dev-client`, `livekit-client`, `@livekit/react-native`, `@livekit/react-native-webrtc`, `@livekit/react-native-expo-plugin`, `@config-plugins/react-native-webrtc`, and `@react-native-community/slider` using `npx expo install`; register WebRTC globals once during app initialization and start/stop the LiveKit audio session with room lifecycle. Block `android.permission.CAMERA` in Expo config because the plugin adds it by default but this MVP publishes audio only.
 
-- [ ] **Step 4: Implement the room connection adapter**
+- [x] **Step 4: Implement the room connection adapter**
 
-Connect only with server-issued credentials; publish microphone audio and subscribe to remote audio. Do not request or publish camera tracks. Map SDK state/events to the declared room state and participant interface; apply per-track remote volume independently.
+Connect only with server-issued credentials; publish microphone audio and subscribe to remote audio. Do not request or publish camera tracks. Map SDK state/events to the declared room state and participant interface; apply normalized `[0, 1]` per-participant gain to that participant's native WebRTC audio track only.
 
-- [ ] **Step 5: Write failing room-screen tests**
+- [x] **Step 5: Write failing room-screen tests**
 
 Test that the screen lists connected participants, shows mute/unmute state, toggles local mic, calls individual volume controls, and disconnects on leave. When mic permission is denied, verify the screen remains clearly receive-only and presents a Settings path. Include the creator plus three invitees and a participant reconnecting.
 
-- [ ] **Step 6: Implement room screen and controls**
+- [x] **Step 6: Implement room screen and controls**
 
 Build a focused call UI with connection status, participant rows, per-person volume sliders, one local mute control, and leave. Avoid adding lobby, chat, video, or other social features.
 
 - [x] **Step 7: Run mobile tests and static checks**
 
-Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint`
+Run: `npm test --workspace @bgmi/mobile && npm run typecheck && npm run lint && (cd mobile && npx expo install --check && npx expo export --platform ios && npx expo export --platform android)`
 
 Expected: PASS, including participant-isolated volume and reconnect state tests.
 

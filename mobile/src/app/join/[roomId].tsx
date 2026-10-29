@@ -1,7 +1,8 @@
 import { RoomIdSchema } from '@bgmi/contracts/room';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createDefaultRoomApi, createInviteLink, RoomApiError } from '@/api/room-api';
 import { JoinRoomForm } from '@/features/room/JoinRoomForm';

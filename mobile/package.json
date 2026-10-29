@@ -4,10 +4,16 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@bgmi/contracts": "*",
+    "@config-plugins/react-native-webrtc": "^15.0.2",
     "@expo/ui": "~58.0.25",
+    "@livekit/react-native": "^3.1.0",
+    "@livekit/react-native-expo-plugin": "^1.1.0",
+    "@livekit/react-native-webrtc": "^150.1.1",
+    "@react-native-community/slider": "5.2.1",
     "expo": "~58.0.21",
     "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.14",
+    "expo-dev-client": "~58.0.17",
     "expo-device": "~58.0.5",
     "expo-font": "~58.0.11",
     "expo-glass-effect": "~58.0.5",
@@ -19,6 +25,7 @@
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
     "expo-web-browser": "~58.0.7",
+    "livekit-client": "^2.23.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -45,7 +52,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "jest --watchAll=false",
+    "test": "jest --watchAll=false --runInBand",
     "lint": "expo lint"
   },
   "private": true
