@@ -120,6 +120,9 @@ git commit -m "chore: bootstrap Expo voice chat workspace"
 ## Task 2: Define Contracts and Implement Room/Token API
 
 **Files:**
+- Modify: `package-lock.json`
+- Modify: `server/package.json`
+- Modify: `packages/contracts/package.json`
 - Create: `packages/contracts/src/room.ts`
 - Create: `packages/contracts/test/room.test.ts`
 - Create: `server/src/config.ts`
@@ -129,6 +132,8 @@ git commit -m "chore: bootstrap Expo voice chat workspace"
 - Create: `server/src/app.ts`
 - Create: `server/test/room-service.test.ts`
 - Create: `server/test/rooms-routes.test.ts`
+- Create: `server/test/config.test.ts`
+- Modify: `server/src/index.ts`
 - Create: `server/.env.example`
 
 **Interfaces:**
@@ -142,41 +147,41 @@ git commit -m "chore: bootstrap Expo voice chat workspace"
 - HTTP: `POST /v1/rooms` creates a room; `POST /v1/rooms/:roomId/join` returns a guest token; `GET /healthz` returns `{ status: "ok" }`.
 - Errors use `{ error: { code: string; message: string } }`; use HTTP 400 for invalid input, 404 for unknown/expired room, 409 for a full room, and 503 for LiveKit service failures.
 
-- [ ] **Step 1: Write failing contract tests**
+- [x] **Step 1: Write failing contract tests**
 
 Test that a trimmed 1-character display name is accepted; blank and 25-character names are rejected; room IDs match the 22-character base64url encoding of 128 random bits; create/join responses require all listed fields.
 
-- [ ] **Step 2: Run the contract tests and verify they fail**
+- [x] **Step 2: Run the contract tests and verify they fail**
 
 Run: `npm test --workspace @bgmi/contracts`
 
 Expected: FAIL because the room schemas and exports do not exist.
 
-- [ ] **Step 3: Implement and export Zod request/response schemas**
+- [x] **Step 3: Implement and export Zod request/response schemas**
 
 Keep error and room contracts in `packages/contracts/src/room.ts`; export inferred types from `src/index.ts`.
 
-- [ ] **Step 4: Run contract tests and verify they pass**
+- [x] **Step 4: Run contract tests and verify they pass**
 
 Run: `npm test --workspace @bgmi/contracts`
 
 Expected: PASS for valid/invalid display names, URL-safe room IDs, and required response fields.
 
-- [ ] **Step 5: Write failing room-service and route tests**
+- [x] **Step 5: Write failing room-service and route tests**
 
-Use a fake `LiveKitAdmin` to assert room creation sets `maxParticipants` to exactly 4 and a 10-minute empty timeout; when four participants are already connected, another join receives `room_full`; an unknown room receives `room_not_found`; no token is issued for rejected joins; successful guest tokens permit microphone publish and subscribe but not camera publish. Test Fastify routes for the stated status codes and response schemas.
+Use a fake `LiveKitAdmin` to assert room creation sets `maxParticipants` to exactly 4 and a 10-minute empty timeout; when four participants are already connected, another join receives `room_full`; an unknown room receives `room_not_found`; no token is issued for rejected joins; successful guest tokens permit microphone publish and subscribe but not camera publish. Test Fastify routes for the stated status codes and response schemas. Test that server configuration fails without credentials and accepts only secure WebSocket LiveKit URLs.
 
-- [ ] **Step 6: Run server tests and verify they fail**
+- [x] **Step 6: Run server tests and verify they fail**
 
 Run: `npm test --workspace @bgmi/server`
 
 Expected: FAIL because room service and routes are not implemented.
 
-- [ ] **Step 7: Implement the LiveKit adapter, service, and Fastify routes**
+- [x] **Step 7: Implement the LiveKit adapter, service, and Fastify routes**
 
 Generate room IDs with `crypto.randomBytes(16).toString("base64url")` and use them as unguessable invite credentials/LiveKit room names. Configure LiveKit's own room maximum as 4 to enforce the cap even when joins race; perform a participant-count pre-check for a friendly 409 response. A simultaneous race may issue two valid tokens for one remaining slot, but LiveKit must reject the excess connection; map that connection failure to `room_full` in Task 4. Treat a null participant-count result as an unknown/expired room and return 404. Return only `roomId` from the create API; the mobile app constructs its invite with `Linking.createURL("/join/<roomId>")` using the `zero-ji-ka-hukum` scheme. Load `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` only in the server process; issue audio-only participant tokens that expire after 10 minutes.
 
-- [ ] **Step 8: Run server and contract suites**
+- [x] **Step 8: Run server and contract suites**
 
 Run: `npm test --workspace @bgmi/contracts && npm test --workspace @bgmi/server && npm run typecheck`
 
@@ -185,7 +190,7 @@ Expected: all tests pass; the client-facing response never contains LiveKit API 
 - [ ] **Step 9: Commit the room API**
 
 ```bash
-git add packages/contracts server
+git add package-lock.json packages/contracts server docs/superpowers/plans/2026-10-29-bgmi-voice-chat.md
 git commit -m "feat: add four-person LiveKit room API"
 ```
 
