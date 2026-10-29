@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.expo/
+.superpowers/sdd/
+mobile/ios/
+mobile/android/
+**/.env
+**/.env.*
+!**/.env.example
+*.log
