@@ -47,10 +47,10 @@
 - `mobile/app.config.ts` — app scheme, microphone strings, LiveKit config plugins, and native background configuration.
 - `mobile/jest.config.js` — `jest-expo` test configuration.
 - `mobile/plugins/withCallForegroundService.ts` — Expo config plugin for the Android in-call microphone foreground service and manifest declarations.
-- `mobile/app/_layout.tsx` — Expo Router shell and LiveKit native initialization.
-- `mobile/app/index.tsx` — create-room and enter-invite home screen.
-- `mobile/app/join/[roomId].tsx` — guest display-name confirmation and join state.
-- `mobile/app/room/[roomId].tsx` — active-call screen and call controls.
+- `mobile/src/app/_layout.tsx` — Expo Router shell and LiveKit native initialization.
+- `mobile/src/app/index.tsx` — create-room and enter-invite home screen.
+- `mobile/src/app/join/[roomId].tsx` — guest display-name confirmation and join state.
+- `mobile/src/app/room/[roomId].tsx` — active-call screen and call controls.
 - `mobile/src/api/room-api.ts` — typed calls to the backend.
 - `mobile/src/features/room/room-connection.ts` — LiveKit connect, reconnect, mute, and disconnect operations.
 - `mobile/src/platform/call-foreground-service.ts` — start/stop the Android ongoing-call foreground service.
@@ -62,12 +62,17 @@
 **Files:**
 - Create: `package.json`
 - Create: `tsconfig.base.json`
+- Create: `eslint.config.mjs`
 - Create: `mobile/` from the Expo Router TypeScript template
+- Modify: `mobile/app.json` — set displayed name, slug, and scheme to `zero-ji-ka-hukum`; target iOS and Android only.
 - Create: `server/package.json`, `server/tsconfig.json`, and `server/src/index.ts`
 - Create: `packages/contracts/package.json`, `packages/contracts/tsconfig.json`, and `packages/contracts/src/index.ts`
 - Create: `packages/contracts/vitest.config.ts`
 - Create: `server/vitest.config.ts`
 - Create: `mobile/jest.config.js`
+- Create: `mobile/eslint.config.js`
+- Create: `mobile/test/style-mock.js`
+- Create: `mobile/src/app/__tests__/home-screen.test.tsx`
 - Create: `README.md`
 - Create: `.gitignore`
 
@@ -75,7 +80,7 @@
 - Produces npm workspaces named `@bgmi/mobile`, `@bgmi/server`, and `@bgmi/contracts`.
 - Produces root commands `npm run typecheck`, `npm test`, and `npm run lint` that run the corresponding workspace commands.
 
-- [ ] **Step 0: Commit the approved design and plan as the project baseline**
+- [x] **Step 0: Commit the approved design and plan as the project baseline**
 
 Run from `bgmi-voice-chat/`:
 
@@ -84,7 +89,7 @@ git add .gitignore docs/superpowers/specs docs/superpowers/plans
 git commit -m "docs: add approved BGMI voice MVP design and plan"
 ```
 
-- [ ] **Step 1: Create the Expo Router TypeScript app and workspace package skeleton**
+- [x] **Step 1: Create the Expo Router TypeScript app and workspace package skeleton**
 
 Run from `bgmi-voice-chat/`:
 
@@ -92,23 +97,23 @@ Run from `bgmi-voice-chat/`:
 npx create-expo-app@latest mobile --template default
 ```
 
-Add `server` and `packages/contracts` as npm workspaces without moving the approved design or plan documents.
+Add `server` and `packages/contracts` as npm workspaces without moving the approved design or plan documents. Keep Expo Router routes under `mobile/src/app/` per the project instructions.
 Initialize Git in `bgmi-voice-chat/` only if it is not already inside an existing repository; do not reinitialize an existing repository. Keep generated `mobile/ios` and `mobile/android` projects ignored under Expo Continuous Native Generation.
 
-- [ ] **Step 2: Configure workspace scripts and TypeScript project references**
+- [x] **Step 2: Configure workspace scripts and TypeScript project references**
 
-Set the root scripts to delegate typecheck, test, and lint to all workspaces; set workspace names exactly as listed above; configure Vitest for server/contracts and Jest with `jest-expo` for mobile; replace the generated demo tab routes with the simple root route layout in this plan; add a minimal server entrypoint and package exports for contracts.
+Set the root scripts to delegate typecheck, test, and lint to all workspaces; set workspace names exactly as listed above; configure Vitest for server/contracts and Jest with `jest-expo` for mobile; replace the generated demo tab routes with a simple root Stack and branded home placeholder; add a minimal server entrypoint and package exports for contracts.
 
-- [ ] **Step 3: Verify the scaffold**
+- [x] **Step 3: Verify the scaffold**
 
 Run: `npm install && npm run typecheck && npm run lint`
 
-Expected: install completes; all three workspaces typecheck and lint without errors. Run the Expo config command `npx expo config --type public` from `mobile/` and confirm the app config resolves.
+Expected: install completes; all three workspaces typecheck and lint without errors. Run `npx expo config --type public` from `mobile/` and confirm `name`, `slug`, and `scheme` resolve to `zero-ji-ka-hukum`, with `platforms` set to iOS and Android.
 
-- [ ] **Step 4: Commit the workspace scaffold**
+- [x] **Step 4: Commit the workspace scaffold**
 
 ```bash
-git add package.json package-lock.json tsconfig.base.json mobile server packages .gitignore
+git add package.json package-lock.json tsconfig.base.json eslint.config.mjs mobile server packages .gitignore docs/superpowers/specs docs/superpowers/plans
 git commit -m "chore: bootstrap Expo voice chat workspace"
 ```
 
@@ -127,7 +132,7 @@ git commit -m "chore: bootstrap Expo voice chat workspace"
 - Create: `server/.env.example`
 
 **Interfaces:**
-- `CreateRoomResponse = { roomId: string; inviteLink: string }`.
+- `CreateRoomResponse = { roomId: string }`.
 - `JoinRoomRequest = { displayName: string }` where trimmed `displayName` has 1–24 characters.
 - `JoinRoomResponse = { roomId: string; displayName: string; participantIdentity: string; serverUrl: string; token: string }`.
 - `RoomService.createRoom(): Promise<CreateRoomResponse>`.
@@ -169,7 +174,7 @@ Expected: FAIL because room service and routes are not implemented.
 
 - [ ] **Step 7: Implement the LiveKit adapter, service, and Fastify routes**
 
-Generate room IDs with `crypto.randomBytes(16).toString("base64url")` and use them as unguessable invite credentials/LiveKit room names. Configure LiveKit's own room maximum as 4 to enforce the cap even when joins race; perform a participant-count pre-check for a friendly 409 response. A simultaneous race may issue two valid tokens for one remaining slot, but LiveKit must reject the excess connection; map that connection failure to `room_full` in Task 4. Treat a null participant-count result as an unknown/expired room and return 404. Use `bgmivoice://join/<roomId>` as the MVP invite link. Load `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` only in the server process; issue audio-only participant tokens that expire after 10 minutes.
+Generate room IDs with `crypto.randomBytes(16).toString("base64url")` and use them as unguessable invite credentials/LiveKit room names. Configure LiveKit's own room maximum as 4 to enforce the cap even when joins race; perform a participant-count pre-check for a friendly 409 response. A simultaneous race may issue two valid tokens for one remaining slot, but LiveKit must reject the excess connection; map that connection failure to `room_full` in Task 4. Treat a null participant-count result as an unknown/expired room and return 404. Return only `roomId` from the create API; the mobile app constructs its invite with `Linking.createURL("/join/<roomId>")` using the `zero-ji-ka-hukum` scheme. Load `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` only in the server process; issue audio-only participant tokens that expire after 10 minutes.
 
 - [ ] **Step 8: Run server and contract suites**
 
@@ -189,13 +194,13 @@ git commit -m "feat: add four-person LiveKit room API"
 **Files:**
 - Create: `mobile/src/api/room-api.ts`
 - Create: `mobile/src/api/room-api.test.ts`
-- Create: `mobile/app/index.tsx`
-- Create: `mobile/app/join/[roomId].tsx`
+- Create: `mobile/src/app/index.tsx`
+- Create: `mobile/src/app/join/[roomId].tsx`
 - Create: `mobile/src/features/room/JoinRoomForm.tsx`
 - Create: `mobile/src/features/room/JoinRoomForm.test.tsx`
 - Create: `mobile/src/features/room/RoomState.ts`
 - Create: `mobile/src/features/room/RoomState.test.ts`
-- Modify: `mobile/app/_layout.tsx`
+- Modify: `mobile/src/app/_layout.tsx`
 
 **Interfaces:**
 - `RoomApi.createRoom(): Promise<CreateRoomResponse>`.
@@ -205,7 +210,7 @@ git commit -m "feat: add four-person LiveKit room API"
 
 - [ ] **Step 1: Write failing API-client tests**
 
-Test that create and join requests use the `/v1` endpoints, send JSON, parse valid responses, and surface typed room-full, invalid-invite, and service-error responses without exposing token details in user-facing error text.
+Test that create and join requests use the `/v1` endpoints, send JSON, parse valid responses, and surface typed room-full, invalid-invite, and service-error responses without exposing token details in user-facing error text. Test that the invite URI is constructed from the configured scheme and `/join/<roomId>` path.
 
 - [ ] **Step 2: Run API-client tests and verify they fail**
 
@@ -229,7 +234,7 @@ Expected: FAIL because join screens and state transitions are not implemented.
 
 - [ ] **Step 6: Implement home, invite join, and room-state UI**
 
-Add create-room and join-code entry on the home screen. Show a share action for the invite URI and a copyable room ID. Parse `bgmivoice://join/<roomId>` into the join screen and let the guest enter a display name. Once connected, request microphone permission and publish audio; if permission is denied, stay in the room receive-only and show an actionable Settings path. Display clear room-full, unknown-invite, network, and microphone-permission states.
+Add create-room and join-code entry on the home screen. Build the share URI with Expo Linking's `createURL` for `/join/<roomId>` and the configured `zero-ji-ka-hukum` scheme; show a share action and a copyable room ID. Handle that deep link in `src/app/join/[roomId].tsx` and let the guest enter a display name. Once connected, request microphone permission and publish audio; if permission is denied, stay in the room receive-only and show an actionable Settings path. Display clear room-full, unknown-invite, network, and microphone-permission states.
 
 - [ ] **Step 7: Run mobile tests and static checks**
 
@@ -252,8 +257,8 @@ git commit -m "feat: add guest room create and join flow"
 - Create: `mobile/src/features/room/RoomScreen.tsx`
 - Create: `mobile/src/features/room/RoomScreen.test.tsx`
 - Create: `mobile/src/features/room/ParticipantRow.tsx`
-- Modify: `mobile/app/room/[roomId].tsx`
-- Modify: `mobile/app/_layout.tsx`
+- Modify: `mobile/src/app/room/[roomId].tsx`
+- Modify: `mobile/src/app/_layout.tsx`
 
 **Interfaces:**
 - `RoomConnection.connect(credentials: JoinRoomResponse): Promise<void>`.

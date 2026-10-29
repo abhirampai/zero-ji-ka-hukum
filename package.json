@@ -1,0 +1,25 @@
+{
+  "name": "bgmi-voice-chat",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "server",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

@@ -1,6 +1,8 @@
 # BGMI Friends Voice Chat — MVP Design
 
-**Status:** Ready for user approval; no application code should be created until approved.
+**Status:** Approved by user.
+
+**App name:** `zero-ji-ka-hukum` (user-provided; use as the displayed app name and deep-link scheme).
 
 ## Intent
 
@@ -36,6 +38,7 @@ Guest display names and invite-based joining are the proposed low-friction MVP d
 ## Proposed technical approach
 
 - **Mobile client:** Expo / React Native / TypeScript, using custom development builds and native modules/config plugins. Expo Go is not sufficient for validating the required native calling and background-audio behavior.
+- **App identity:** Display the name `zero-ji-ka-hukum`; use the same valid lowercase URI scheme for room invites.
 - **Voice transport:** LiveKit React Native SDK and a small LiveKit room for each squad. Use LiveKit Cloud for the MVP to avoid operating a real-time media fleet; this adds a recurring cost and vendor dependency.
 - **Backend:** A small TypeScript service creates rooms and issues short-lived participant tokens. It enforces the four-participant limit and validates invite codes; clients must not be trusted to enforce the cap themselves.
 - **Audio:** Configure iOS background audio/call behavior and Android microphone foreground-service behavior through native app configuration. Set audio behavior to coexist with other app audio where the OS permits, then validate actual game and voice levels on devices. Per-friend volume is applied client-side.
