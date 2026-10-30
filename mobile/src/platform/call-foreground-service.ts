@@ -1,5 +1,20 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import ReactNativeForegroundService from '@supersami/rn-foreground-service';
+interface ForegroundServiceModule {
+  default: {
+    register: (options: Record<string, unknown>) => void;
+    start: (options: Record<string, unknown>) => Promise<void>;
+    stop: () => Promise<void>;
+    isRunning: () => boolean;
+  };
+}
+
+// Lazy-load the native module so importing this file never pulls in a
+// library that crashes at module scope on non-Android platforms (iOS has no
+// native implementation and its index.js calls `new NativeEventEmitter()`).
+function loadForegroundService(): ForegroundServiceModule['default'] {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('@supersami/rn-foreground-service') as ForegroundServiceModule).default;
+}
 
 const CALL_NOTIFICATION_ID = 4712;
 
@@ -32,7 +47,7 @@ export const CallForegroundService = {
     if (!isAndroidPlatform()) {
       return;
     }
-    ReactNativeForegroundService.register({
+    loadForegroundService().register({
       config: {
         alert: false,
         onServiceErrorCallBack: () => {
@@ -47,7 +62,7 @@ export const CallForegroundService = {
       return;
     }
     await requestNotificationPermission();
-    await ReactNativeForegroundService.start({
+    await loadForegroundService().start({
       id: CALL_NOTIFICATION_ID,
       title: 'Squad voice chat',
       message: 'Voice chat is active in the background.',
@@ -64,6 +79,6 @@ export const CallForegroundService = {
     if (!isAndroidPlatform()) {
       return;
     }
-    await ReactNativeForegroundService.stop();
+    await loadForegroundService().stop();
   },
 };
