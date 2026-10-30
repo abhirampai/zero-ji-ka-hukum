@@ -23,6 +23,8 @@ class FakeRoomDriver implements LiveKitRoomDriver {
   disconnect = jest.fn(async () => undefined);
   setMicrophoneEnabled = jest.fn(async (_enabled: boolean) => undefined);
   setRemoteVolume = jest.fn((_participantIdentity: string, _volume: number) => undefined);
+  listAudioInputDevices = jest.fn(async () => []);
+  setAudioInputDevice = jest.fn(async (_deviceId: string) => undefined);
 
   subscribe(listener: (event: RoomDriverEvent) => void) {
     this.listener = listener;

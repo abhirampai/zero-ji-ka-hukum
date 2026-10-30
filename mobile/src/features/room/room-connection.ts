@@ -39,6 +39,8 @@ export interface LiveKitRoomDriver {
   disconnect(): Promise<void>;
   setMicrophoneEnabled(enabled: boolean): Promise<void>;
   setRemoteVolume(participantIdentity: string, volume: number): void;
+  listAudioInputDevices(): Promise<{ deviceId: string; label: string }[]>;
+  setAudioInputDevice(deviceId: string): Promise<void>;
   subscribe(listener: (event: RoomDriverEvent) => void): () => void;
 }
 
@@ -137,6 +139,39 @@ export class RoomConnection {
   setRemoteVolume(participantIdentity: string, volume: number): void {
     const normalizedVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
     this.driver.setRemoteVolume(participantIdentity, normalizedVolume);
+  }
+
+  async listAudioInputDevices(): Promise<{ deviceId: string; label: string }[]> {
+    try {
+      return await this.driver.listAudioInputDevices();
+    } catch {
+      return [];
+    }
+  }
+
+  async setAudioInputDevice(deviceId: string): Promise<void> {
+    await this.driver.setAudioInputDevice(deviceId);
+  }
+
+  // Convenience aliases used by some callers.
+  async getAudioInputDevices(): Promise<{ deviceId: string; label: string }[]> {
+    return this.listAudioInputDevices();
+  }
+
+  async setMicrophoneDevice(deviceId: string): Promise<void> {
+    return this.setAudioInputDevice(deviceId);
+  }
+
+  async switchMicrophone(deviceId: string): Promise<void> {
+    return this.setAudioInputDevice(deviceId);
+  }
+
+  muteParticipant(participantIdentity: string, muted: boolean): void {
+    this.setRemoteVolume(participantIdentity, muted ? 0 : 1);
+  }
+
+  setParticipantMuted(participantIdentity: string, muted: boolean): void {
+    this.muteParticipant(participantIdentity, muted);
   }
 
   async disconnect(): Promise<void> {

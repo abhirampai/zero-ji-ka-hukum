@@ -70,6 +70,32 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
     this.applyRemoteVolume(participantIdentity, volume);
   }
 
+  async listAudioInputDevices(): Promise<{ deviceId: string; label: string }[]> {
+    try {
+      // Lazy-load to keep non-native/test environments working.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const webrtc = require('@livekit/react-native-webrtc') as {
+        mediaDevices?: { enumerateDevices: () => Promise<{ kind: string; deviceId: string; label?: string }[]> };
+      };
+      const devices = await webrtc.mediaDevices?.enumerateDevices?.();
+      if (!Array.isArray(devices)) {
+        return [];
+      }
+      return devices
+        .filter((device) => device.kind === 'audioinput')
+        .map((device, index) => ({
+          deviceId: device.deviceId,
+          label: device.label || `Microphone ${index + 1}`,
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  async setAudioInputDevice(deviceId: string): Promise<void> {
+    await this.room.switchActiveDevice('audioinput', deviceId);
+  }
+
   private readonly onReconnecting = () => this.emit({ type: 'reconnecting' });
   private readonly onReconnected = () => this.emit({ type: 'reconnected' });
   private readonly onDisconnected = () => this.emit({ type: 'disconnected' });
@@ -103,16 +129,26 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
   }
 
   private applyRemoteVolume(participantIdentity: string, volume: number) {
-    const participant = this.room.remoteParticipants.get(participantIdentity);
+    const participant = this.room.remoteParticipants.get(participantIdentity) as
+      | { setVolume?: (volume: number) => void; audioTrackPublications?: Map<string, { audioTrack?: { mediaStreamTrack?: { _setVolume?: (volume: number) => void } } }> }
+      | undefined;
     if (!participant) {
       return;
     }
 
-    for (const publication of participant.audioTrackPublications.values()) {
-      const track = publication.audioTrack?.mediaStreamTrack as
-        | (MediaStreamTrack & { _setVolume?: (volume: number) => void })
-        | undefined;
-      track?._setVolume?.(volume);
+    try {
+      participant.setVolume?.(volume);
+    } catch {
+      // Fall through to track-level volume.
+    }
+
+    if (participant.audioTrackPublications) {
+      for (const publication of participant.audioTrackPublications.values()) {
+        const track = publication.audioTrack?.mediaStreamTrack as
+          | (MediaStreamTrack & { _setVolume?: (volume: number) => void })
+          | undefined;
+        track?._setVolume?.(volume);
+      }
     }
   }
 

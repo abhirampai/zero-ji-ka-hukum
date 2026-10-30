@@ -36,5 +36,5 @@ export default function RoomRoute() {
     router.replace('/');
   };
 
-  return <RoomScreen connection={connection} snapshot={snapshot} onLeave={leaveRoom} />;
+  return <RoomScreen connection={connection} snapshot={snapshot} onLeave={leaveRoom} roomId={roomId} inviteLink={session.inviteLink} />;
 }

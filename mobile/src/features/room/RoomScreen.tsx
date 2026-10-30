@@ -1,15 +1,24 @@
 import * as Linking from 'expo-linking';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ParticipantRow } from './ParticipantRow';
 import type { RoomConnection, RoomConnectionSnapshot } from './room-connection';
 
 interface RoomScreenProps {
-  connection: Pick<RoomConnection, 'setMicrophoneEnabled' | 'setRemoteVolume'>;
+  connection: Pick<
+    RoomConnection,
+    | 'setMicrophoneEnabled'
+    | 'setRemoteVolume'
+    | 'listAudioInputDevices'
+    | 'setAudioInputDevice'
+    | 'muteParticipant'
+  >;
   snapshot: RoomConnectionSnapshot;
   onLeave(): void;
+  roomId?: string;
+  inviteLink?: string;
 }
 
 const CONNECTION_LABELS: Record<RoomConnectionSnapshot['state'], string> = {
@@ -22,13 +31,19 @@ const CONNECTION_LABELS: Record<RoomConnectionSnapshot['state'], string> = {
   error: 'Connection failed',
 };
 
-export function RoomScreen({ connection, snapshot, onLeave }: RoomScreenProps) {
+export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }: RoomScreenProps) {
   const [volumes, setVolumes] = useState<Record<string, number>>({});
+  const [muted, setMuted] = useState<Record<string, boolean>>({});
   const [controlError, setControlError] = useState<string | null>(null);
+  const [microphones, setMicrophones] = useState< { deviceId: string; label: string }[]>([]);
+  const [selectedMicrophone, setSelectedMicrophone] = useState<string | null>(null);
   const isConnected =
     snapshot.state === 'connected' ||
     snapshot.state === 'connected_receive_only' ||
     snapshot.state === 'reconnecting';
+
+  const localParticipant = snapshot.participants.find((participant) => participant.isLocal);
+  const localName = localParticipant?.displayName ?? 'You';
 
   const onMicrophonePress = async () => {
     setControlError(null);
@@ -41,7 +56,30 @@ export function RoomScreen({ connection, snapshot, onLeave }: RoomScreenProps) {
 
   const onVolumeChange = (identity: string, volume: number) => {
     setVolumes((current) => ({ ...current, [identity]: volume }));
+    setMuted((current) => ({ ...current, [identity]: volume === 0 }));
     connection.setRemoteVolume(identity, volume);
+  };
+
+  const onToggleMuteParticipant = (identity: string) => {
+    const isMuted = muted[identity] ?? (volumes[identity] ?? 1) === 0;
+    const nextMuted = !isMuted;
+    setMuted((current) => ({ ...current, [identity]: nextMuted }));
+    if (nextMuted) {
+      setVolumes((current) => ({ ...current, [identity]: 0 }));
+      connection.setRemoteVolume(identity, 0);
+      connection.muteParticipant?.(identity, true);
+    } else {
+      const restored = volumes[identity] && volumes[identity] > 0 ? volumes[identity] : 1;
+      setVolumes((current) => ({ ...current, [identity]: restored }));
+      connection.setRemoteVolume(identity, restored);
+      connection.muteParticipant?.(identity, false);
+    }
+  };
+
+  const onVolumeStep = (identity: string, delta: number) => {
+    const current = volumes[identity] ?? 1;
+    const next = Math.min(1, Math.max(0, current + delta));
+    onVolumeChange(identity, next);
   };
 
   const openSettings = async () => {
@@ -52,15 +90,73 @@ export function RoomScreen({ connection, snapshot, onLeave }: RoomScreenProps) {
     }
   };
 
+  const onShareInvite = async () => {
+    try {
+      await Share.share({
+        message: inviteLink ?? (roomId ? `zero-ji-ka-hukum://join/${roomId}` : ''),
+      });
+    } catch {
+      setControlError('Could not open the share sheet.');
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDevices = async () => {
+      if (typeof connection.listAudioInputDevices !== 'function') {
+        return;
+      }
+      try {
+        const devices = await connection.listAudioInputDevices();
+        if (cancelled) {
+          return;
+        }
+        setMicrophones(devices);
+        if (devices.length > 0 && !selectedMicrophone) {
+          setSelectedMicrophone(devices[0].deviceId);
+        }
+      } catch {
+        // Device enumeration is optional; fall back to the default microphone.
+      }
+    };
+    void loadDevices();
+    return () => {
+      cancelled = true;
+    };
+  }, [connection, selectedMicrophone]);
+
+  const onSelectMicrophone = async (deviceId: string) => {
+    setSelectedMicrophone(deviceId);
+    try {
+      await connection.setAudioInputDevice?.(deviceId);
+    } catch {
+      setControlError('Could not switch microphone.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.heading}>
           <Text style={styles.eyebrow}>SQUAD VOICE</Text>
           <Text style={styles.title}>In the room</Text>
+          <Text style={styles.you}>You: {localName}</Text>
           <Text accessibilityLiveRegion="polite" style={styles.status}>
             {CONNECTION_LABELS[snapshot.state]}
           </Text>
+          {roomId ? (
+            <View style={styles.codeRow}>
+              <Text style={styles.codeLabel}>Room code</Text>
+              <Text accessibilityLabel="Room code" selectable style={styles.codeValue}>
+                {roomId}
+              </Text>
+            </View>
+          ) : null}
+          {inviteLink ? (
+            <Text selectable style={styles.inviteLink}>
+              {inviteLink}
+            </Text>
+          ) : null}
         </View>
 
         {snapshot.errorCode === 'microphone_permission_denied' ? (
@@ -90,14 +186,80 @@ export function RoomScreen({ connection, snapshot, onLeave }: RoomScreenProps) {
           </Text>
         ) : null}
 
+        {microphones.length > 0 ? (
+          <View style={styles.micSourceCard}>
+            <Text style={styles.sectionTitle}>Microphone source</Text>
+            <View style={styles.micSourceList}>
+              {microphones.map((device) => (
+                <Pressable
+                  key={device.deviceId}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use ${device.label}`}
+                  onPress={() => void onSelectMicrophone(device.deviceId)}
+                  style={[
+                    styles.micSourceButton,
+                    selectedMicrophone === device.deviceId && styles.micSourceButtonActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.micSourceText,
+                      selectedMicrophone === device.deviceId && styles.micSourceTextActive,
+                    ]}
+                  >
+                    {device.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         <ScrollView contentContainerStyle={styles.participantList}>
           {snapshot.participants.map((participant) => (
-            <ParticipantRow
-              key={participant.identity}
-              participant={participant}
-              volume={volumes[participant.identity] ?? 1}
-              onVolumeChange={(volume) => onVolumeChange(participant.identity, volume)}
-            />
+            <View key={participant.identity} style={styles.participantWrapper}>
+              <ParticipantRow
+                participant={participant}
+                volume={volumes[participant.identity] ?? 1}
+                onVolumeChange={(volume) => onVolumeChange(participant.identity, volume)}
+              />
+              {!participant.isLocal ? (
+                <View style={styles.participantControls}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      muted[participant.identity] ?? (volumes[participant.identity] ?? 1) === 0
+                        ? `Unmute ${participant.displayName}`
+                        : `Mute ${participant.displayName}`
+                    }
+                    onPress={() => onToggleMuteParticipant(participant.identity)}
+                    style={styles.smallButton}
+                  >
+                    <Text style={styles.smallButtonText}>
+                      {muted[participant.identity] ?? (volumes[participant.identity] ?? 1) === 0
+                        ? 'Unmute'
+                        : 'Mute'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Decrease volume for ${participant.displayName}`}
+                    onPress={() => onVolumeStep(participant.identity, -0.1)}
+                    style={styles.smallButton}
+                  >
+                    <Text style={styles.smallButtonText}>−</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Increase volume for ${participant.displayName}`}
+                    onPress={() => onVolumeStep(participant.identity, 0.1)}
+                    style={styles.smallButton}
+                  >
+                    <Text style={styles.smallButtonText}>+</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
           ))}
         </ScrollView>
 
@@ -113,6 +275,16 @@ export function RoomScreen({ connection, snapshot, onLeave }: RoomScreenProps) {
               {snapshot.localMicrophoneEnabled ? 'Mute mic' : 'Enable mic'}
             </Text>
           </Pressable>
+          {roomId ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share room code"
+              onPress={() => void onShareInvite()}
+              style={styles.shareButton}
+            >
+              <Text style={styles.shareButtonText}>Share invite link</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Leave room"
@@ -153,9 +325,34 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
   },
+  you: {
+    color: '#D8E2DB',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   status: {
     color: '#AAB8B0',
     fontSize: 14,
+  },
+  codeRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  codeLabel: {
+    color: '#91A39A',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  codeValue: {
+    color: '#F4F7F5',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  inviteLink: {
+    color: '#B5F36B',
+    fontSize: 13,
   },
   permissionCard: {
     backgroundColor: '#2A2720',
@@ -178,11 +375,74 @@ const styles = StyleSheet.create({
     color: '#FF9B8F',
     fontSize: 14,
   },
+  micSourceCard: {
+    backgroundColor: '#19221D',
+    borderColor: '#2D3D33',
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12,
+  },
+  sectionTitle: {
+    color: '#F4F7F5',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  micSourceList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  micSourceButton: {
+    backgroundColor: '#243128',
+    borderColor: '#3A4A40',
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  micSourceButtonActive: {
+    backgroundColor: '#B5F36B',
+    borderColor: '#B5F36B',
+  },
+  micSourceText: {
+    color: '#E8F0EB',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  micSourceTextActive: {
+    color: '#172014',
+  },
   participantList: {
     gap: 10,
   },
+  participantWrapper: {
+    gap: 6,
+  },
+  participantControls: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+  },
+  smallButton: {
+    alignItems: 'center',
+    backgroundColor: '#243128',
+    borderColor: '#3A4A40',
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 32,
+    minWidth: 44,
+    paddingHorizontal: 10,
+  },
+  smallButtonText: {
+    color: '#E8F0EB',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   controls: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   micButton: {
@@ -192,6 +452,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     minHeight: 54,
+    minWidth: 120,
   },
   micButtonText: {
     color: '#172014',
@@ -200,6 +461,21 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  shareButton: {
+    alignItems: 'center',
+    backgroundColor: '#243128',
+    borderColor: '#627467',
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 54,
+    paddingHorizontal: 16,
+  },
+  shareButtonText: {
+    color: '#E8F0EB',
+    fontSize: 14,
+    fontWeight: '800',
   },
   leaveButton: {
     alignItems: 'center',
