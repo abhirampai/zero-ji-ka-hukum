@@ -1,21 +1,29 @@
 {
   "cli": {
-    "version": ">= 27.2.0",
-    "appVersionSource": "remote"
+    "version": ">= 13.0.0"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zero-ji-ka-hukum-api.onrender.com"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "enableProguardInReleaseBuilds": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zero-ji-ka-hukum-api.onrender.com"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zero-ji-ka-hukum-api.onrender.com"
+      }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }
