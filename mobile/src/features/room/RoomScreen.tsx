@@ -140,7 +140,10 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
         <View style={styles.heading}>
           <Text style={styles.eyebrow}>SQUAD VOICE</Text>
           <Text style={styles.title}>In the room</Text>
-          <Text style={styles.you}>You: {localName}</Text>
+          <View style={styles.codeRow}>
+            <Text style={styles.codeLabel}>Your name</Text>
+            <Text style={styles.codeValue}>{localName}</Text>
+          </View>
           <Text accessibilityLiveRegion="polite" style={styles.status}>
             {CONNECTION_LABELS[snapshot.state]}
           </Text>
