@@ -19,6 +19,7 @@ export interface RoomParticipant {
   displayName: string;
   isMicrophoneEnabled: boolean;
   isLocal: boolean;
+  isSpeaking?: boolean;
 }
 
 export interface RoomConnectionSnapshot {

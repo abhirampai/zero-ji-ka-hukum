@@ -16,6 +16,7 @@ const PARTICIPANT_EVENTS = [
   RoomEvent.TrackUnmuted,
   RoomEvent.LocalTrackPublished,
   RoomEvent.LocalTrackUnpublished,
+  RoomEvent.ActiveSpeakersChanged,
 ] as const;
 
 export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
@@ -140,6 +141,7 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
         displayName: local.name || 'You',
         isMicrophoneEnabled: local.isMicrophoneEnabled,
         isLocal: true,
+        isSpeaking: local.isSpeaking,
       },
     ];
 
@@ -149,6 +151,7 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
         displayName: participant.name || 'Player',
         isMicrophoneEnabled: participant.isMicrophoneEnabled,
         isLocal: false,
+        isSpeaking: participant.isSpeaking,
       });
       const volume = this.remoteVolumes.get(participant.identity);
       if (volume !== undefined) {

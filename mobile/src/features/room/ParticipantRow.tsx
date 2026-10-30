@@ -10,13 +10,15 @@ interface ParticipantRowProps {
 }
 
 export function ParticipantRow({ participant, volume, onVolumeChange }: ParticipantRowProps) {
+  const isSpeaking = participant.isSpeaking === true;
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, isSpeaking && styles.rowSpeaking]}>
       <View style={styles.nameBlock}>
         <Text style={styles.name}>{participant.displayName}</Text>
         <Text style={styles.micState}>
           {participant.isMicrophoneEnabled ? 'Mic on' : 'Mic muted'}
           {participant.isLocal ? ' · You' : ''}
+          {isSpeaking ? ' · Speaking' : ''}
         </Text>
       </View>
       {!participant.isLocal ? (
@@ -38,6 +40,10 @@ export function ParticipantRow({ participant, volume, onVolumeChange }: Particip
 }
 
 const styles = StyleSheet.create({
+  rowSpeaking: {
+    borderColor: '#B5F36B',
+    backgroundColor: '#1F2B22',
+  },
   row: {
     alignItems: 'center',
     backgroundColor: '#19221D',
