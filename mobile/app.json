@@ -14,7 +14,14 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "bitcode": false,
-      "bundleIdentifier": "com.abhi26.zerojikahukum"
+      "bundleIdentifier": "com.abhi26.zerojikahukum",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Enables squad voice chat with your teammates while you play BGMI.",
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "blockedPermissions": [

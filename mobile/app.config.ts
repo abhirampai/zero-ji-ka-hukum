@@ -51,6 +51,7 @@ export function createAppConfig(
           'audio',
           ...(base.ios?.infoPlist?.UIBackgroundModes ?? []),
         ]),
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
