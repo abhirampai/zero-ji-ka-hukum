@@ -405,29 +405,33 @@ git commit -m "feat: configure background voice for gameplay"
 - Mobile environment: `EXPO_PUBLIC_API_URL` only; never include LiveKit API key or secret.
 - Consumes the server API and app room flow from Tasks 2–5.
 
-- [ ] **Step 1: Write a health-route test and a secret-boundary check**
+- [x] **Step 1: Write a health-route test and a secret-boundary check**
 
 Test `GET /healthz` returns `{ status: "ok" }`; add a source/config test that the mobile public environment schema contains no LiveKit secret or API key.
 
-- [ ] **Step 2: Run tests and verify the health test fails**
+Note: the health route pre-existed from Task 2 (`server/src/app.ts`), so its test passed immediately — recorded in the ledger rather than forced to fail artificially.
+
+- [x] **Step 2: Run tests and verify the health test fails**
 
 Run: `npm test --workspace @bgmi/server -- health`
 
-Expected: FAIL until the route is wired into the Fastify app.
+Expected: FAIL until the route is wired into the Fastify app. (The mobile env-boundary test did fail red until `mobile/.env.example` existed; the health route was already wired, so the expectation was satisfied by the boundary check.)
 
-- [ ] **Step 3: Implement health route and safe environment examples**
+- [x] **Step 3: Implement health route and safe environment examples**
 
 Provide placeholders only in `.env.example`; validate required server variables at startup and fail with a clear message if absent. Document that real credentials belong in the server environment/secrets manager, not source control or Expo public variables.
 
-- [ ] **Step 4: Document setup and end-to-end test steps**
+- [x] **Step 4: Document setup and end-to-end test steps**
 
 Document LiveKit Cloud project setup, API startup, mobile API URL configuration, custom development-build installation, invite flow, test suite commands, and the physical BGMI handoff matrix.
 
-- [ ] **Step 5: Run the complete automated verification suite**
+- [x] **Step 5: Run the complete automated verification suite**
 
 Run: `npm test && npm run typecheck && npm run lint`
 
 Expected: all workspace tests, typechecks, and lint checks pass. Then run one end-to-end room with four real devices/users where available; verify a fifth join receives `room_full`.
+
+Status: 44 automated tests pass (13 suites), typecheck/lint clean. The four-device end-to-end room plus fifth-join `room_full` check remain **blocked externally** pending LiveKit Cloud credentials and physical devices — recorded in `mobile/docs/device-test-matrix.md`, not claimed as passed.
 
 - [ ] **Step 6: Commit setup documentation and final verification**
 
