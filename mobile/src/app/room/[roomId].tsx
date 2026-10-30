@@ -1,7 +1,19 @@
+/* eslint-disable @typescript-eslint/no-require-imports, import/first */
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
-import { NativeLiveKitRoomDriver } from '@/features/room/livekit-room-driver';
+import { Platform } from 'react-native';
+
+const NativeLiveKitRoomDriver =
+  Platform.OS === 'ios' || Platform.OS === 'android'
+    ? (require('@/features/room/livekit-room-driver') as { NativeLiveKitRoomDriver: new (...args: any[]) => any }).NativeLiveKitRoomDriver
+    : (class {
+        connect() { return Promise.resolve(); }
+        disconnect() { return Promise.resolve(); }
+        setMicrophoneEnabled() { return Promise.resolve(); }
+        setRemoteVolume() {}
+        subscribe() { return () => {}; }
+      } as any);
 import { RoomScreen } from '@/features/room/RoomScreen';
 import { RoomConnection } from '@/features/room/room-connection';
 import { useRoomSession } from '@/features/room/RoomSessionContext';

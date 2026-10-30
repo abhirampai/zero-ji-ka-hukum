@@ -1,5 +1,11 @@
-import Slider from '@react-native-community/slider';
-import { StyleSheet, Text, View } from 'react-native';
+/* eslint-disable @typescript-eslint/no-require-imports, import/first */
+import { Platform, StyleSheet, Text, View } from 'react-native';
+
+const sliderModule =
+  Platform.OS === 'ios' || Platform.OS === 'android'
+    ? require('@react-native-community/slider')
+    : null;
+const Slider = sliderModule && (sliderModule.default ?? sliderModule);
 
 import type { RoomParticipant } from './room-connection';
 
@@ -21,7 +27,7 @@ export function ParticipantRow({ participant, volume, onVolumeChange }: Particip
           {isSpeaking ? ' · Speaking' : ''}
         </Text>
       </View>
-      {!participant.isLocal ? (
+      {!participant.isLocal && Slider ? (
         <Slider
           accessibilityLabel={`Volume for ${participant.displayName}`}
           maximumTrackTintColor="#425247"

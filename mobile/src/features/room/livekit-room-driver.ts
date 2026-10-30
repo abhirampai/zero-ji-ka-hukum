@@ -1,4 +1,4 @@
-import { AndroidAudioTypePresets, AudioSession } from '@livekit/react-native';
+import type { AndroidAudioTypePresets as AndroidAudioTypePresetsType, AudioSession as AudioSessionType } from '@livekit/react-native';
 import { Room, RoomEvent } from 'livekit-client';
 
 import type {
@@ -18,6 +18,16 @@ const PARTICIPANT_EVENTS = [
   RoomEvent.LocalTrackUnpublished,
   RoomEvent.ActiveSpeakersChanged,
 ] as const;
+
+
+function loadLiveKitAudio() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('@livekit/react-native') as {
+    AndroidAudioTypePresets: typeof AndroidAudioTypePresetsType;
+    AudioSession: typeof AudioSessionType;
+  };
+  return mod;
+}
 
 export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
   private readonly listeners = new Set<(event: RoomDriverEvent) => void>();
@@ -40,10 +50,11 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
 
   async connect(serverUrl: string, token: string): Promise<void> {
     // media audio mode keeps BGMI's own volume healthy while squad audio plays.
-    await AudioSession.configureAudio({
-      android: { audioTypeOptions: AndroidAudioTypePresets.media },
+    const audio = loadLiveKitAudio();
+    await audio.AudioSession.configureAudio({
+      android: { audioTypeOptions: audio.AndroidAudioTypePresets.media },
     });
-    await AudioSession.startAudioSession();
+    await loadLiveKitAudio().AudioSession.startAudioSession();
     this.audioSessionStarted = true;
     try {
       await this.room.connect(serverUrl, token);
@@ -197,6 +208,6 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
       return;
     }
     this.audioSessionStarted = false;
-    await AudioSession.stopAudioSession();
+    await loadLiveKitAudio().AudioSession.stopAudioSession();
   }
 }
