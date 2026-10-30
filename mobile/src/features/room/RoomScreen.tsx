@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ParticipantRow } from './ParticipantRow';
@@ -230,6 +230,13 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
           </View>
         ) : null}
 
+        {Platform.OS === 'ios' ? (
+          <Text style={styles.iosMicNote}>
+            On iPhone, Bluetooth and headset microphones route automatically when
+            connected. The selector above lists inputs the system exposes.
+          </Text>
+        ) : null}
+
         <ScrollView contentContainerStyle={styles.participantList}>
           {snapshot.participants.map((participant) => (
             <View key={participant.identity} style={styles.participantWrapper}>
@@ -437,6 +444,11 @@ const styles = StyleSheet.create({
   },
   micSourceTextActive: {
     color: '#172014',
+  },
+  iosMicNote: {
+    color: '#91A39A',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   participantList: {
     gap: 10,
