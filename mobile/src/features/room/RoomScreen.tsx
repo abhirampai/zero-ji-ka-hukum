@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ParticipantRow } from './ParticipantRow';
@@ -91,16 +91,6 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
     }
   };
 
-  const onShareInvite = async () => {
-    try {
-      await Share.share({
-        message: inviteLink ?? (roomId ? `zero-ji-ka-hukum://join/${roomId}` : ''),
-      });
-    } catch {
-      setControlError('Could not open the share sheet.');
-    }
-  };
-
   const onCopyCode = async () => {
     if (!roomId) {
       return;
@@ -165,12 +155,15 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
               <Text accessibilityLabel="Room code" selectable style={styles.codeValue}>
                 {roomId}
               </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Copy room code"
+                onPress={() => void onCopyCode()}
+                style={styles.copyButton}
+              >
+                <Text style={styles.copyButtonText}>Copy</Text>
+              </Pressable>
             </View>
-          ) : null}
-          {inviteLink ? (
-            <Text selectable style={styles.inviteLink}>
-              {inviteLink}
-            </Text>
           ) : null}
         </View>
 
@@ -297,26 +290,6 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
               {snapshot.localMicrophoneEnabled ? 'Mute mic' : 'Enable mic'}
             </Text>
           </Pressable>
-          {roomId ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Copy room code"
-              onPress={() => void onCopyCode()}
-              style={styles.shareButton}
-            >
-              <Text style={styles.shareButtonText}>Copy code</Text>
-            </Pressable>
-          ) : null}
-          {roomId ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Share room code"
-              onPress={() => void onShareInvite()}
-              style={styles.shareButton}
-            >
-              <Text style={styles.shareButtonText}>Share invite link</Text>
-            </Pressable>
-          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Leave room"
@@ -475,6 +448,21 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: '#E8F0EB',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  copyButton: {
+    alignItems: 'center',
+    backgroundColor: '#243128',
+    borderColor: '#3A4A40',
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 32,
+    paddingHorizontal: 10,
+  },
+  copyButtonText: {
+    color: '#E8F0EB',
+    fontSize: 12,
     fontWeight: '700',
   },
   controls: {
