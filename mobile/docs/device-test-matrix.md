@@ -9,14 +9,17 @@ iOS relies on the `audio` background mode with a playAndRecord/voiceChat
 recording policy; Android relies on a `microphone|mediaPlayback` foreground
 service with an ongoing notification.
 
-## Toolchain status (recorded 2026-10-30)
+## Toolchain status (recorded 2026-10-30, updated after device-build work)
 
-- iOS: Xcode is **not installed** on the build machine (command line tools
-  only) — `npx expo run:ios` **blocked externally**.
-- Android: **no Android SDK / adb** on the build machine — `npx expo run:android`
-  **blocked externally**.
+- iOS: Xcode 27.2 + CocoaPods 1.17.0 + iOS 27.2 simulator runtime installed;
+  `npx expo run:ios` builds and runs on simulator. Physical-device install
+  needs an Apple ID signing team (free account works for dev builds).
+- Android: SDK/adb availability depends on the developer machine; install
+  Android Studio + SDK to run `npx expo run:android`.
 - Metro JS bundles for both platforms export successfully
   (`npx expo export --platform ios|android`).
+- EAS cloud builds configured (`mobile/eas.json`); Android preview profile
+  produces an APK, iOS uses the development profile.
 - Generated native config verified via `npx expo prebuild --no-install`:
   iOS `UIBackgroundModes: [audio]`, `NSMicrophoneUsageDescription`; Android
   `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`,
