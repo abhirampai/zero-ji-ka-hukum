@@ -13,8 +13,7 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "enableProguardInReleaseBuilds": false
+        "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://zero-ji-ka-hukum-api.onrender.com"

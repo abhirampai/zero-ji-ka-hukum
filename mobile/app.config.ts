@@ -27,6 +27,14 @@ export function createAppConfig(
   const plugins: PluginEntry[] = [
     ...basePlugins.filter((plugin) => !isLiveKitEntry(plugin)),
     [LIVEKIT_PLUGIN, { android: { audioType: 'media' } }] as PluginEntry,
+    [
+      'expo-build-properties',
+      {
+        android: {
+          extraProguardRules: '-keep class livekit.org.jni_zero.** { *; }',
+        },
+      },
+    ] as PluginEntry,
     './plugins/withCallForegroundService',
   ];
 
