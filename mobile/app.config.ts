@@ -31,7 +31,7 @@ export function createAppConfig(
       'expo-build-properties',
       {
         android: {
-          extraProguardRules: '-keep class livekit.org.jni_zero.** { *; }',
+          enableMinifyInReleaseBuilds: false,
         },
       },
     ] as PluginEntry,
