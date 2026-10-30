@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Text } from 'react-native';
 
 import { RoomSessionProvider, useRoomSession } from '@/features/room/RoomSessionContext';
+import { DisplayNameProvider } from '@/features/profile/DisplayNameContext';
 import JoinRoomScreen from '../join/[roomId]';
 
 jest.mock('expo-router', () => {
@@ -63,12 +64,17 @@ describe('JoinRoomScreen', () => {
     );
     globalThis.fetch = fetcher as unknown as typeof fetch;
     const screen = await render(
-      <RoomSessionProvider>
-        <JoinRoomScreen />
-        <SessionProbe />
-      </RoomSessionProvider>,
+      <DisplayNameProvider>
+        <RoomSessionProvider>
+          <JoinRoomScreen />
+          <SessionProbe />
+        </RoomSessionProvider>
+      </DisplayNameProvider>,
     );
 
+    await waitFor(() => {
+      expect(screen.getByLabelText('Your name')).toBeTruthy();
+    });
     await fireEvent.changeText(screen.getByLabelText('Your name'), 'Ace');
     await fireEvent.press(screen.getByRole('button', { name: 'Join squad' }));
 

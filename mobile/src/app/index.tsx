@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createDefaultRoomApi, createInviteLink, RoomApiError } from '@/api/room-api';
+import { useDisplayName } from '@/features/profile/DisplayNameContext';
 import { useRoomSession } from '@/features/room/RoomSessionContext';
 
 function getErrorMessage(error: unknown) {
@@ -15,26 +16,43 @@ function getErrorMessage(error: unknown) {
 
 export default function HomeScreen() {
   const { setSession } = useRoomSession();
-  const [displayName, setDisplayName] = useState('');
+  const { displayName, isReady, setDisplayName } = useDisplayName();
+  const [pendingName, setPendingName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const normalizedName = displayName.trim();
   const normalizedRoomCode = roomCode.trim();
-  const canCreate = normalizedName.length > 0 && normalizedName.length <= 24 && !isCreating;
+  const canCreate = !!displayName && displayName.trim().length > 0 && displayName.trim().length <= 24 && !isCreating;
   const canJoin = RoomIdSchema.safeParse(normalizedRoomCode).success;
+  const canSaveName = pendingName.trim().length > 0 && pendingName.trim().length <= 24 && !isSavingName;
 
-  const createSquad = async () => {
-    if (!canCreate) {
+  const saveName = async () => {
+    if (!canSaveName) {
       return;
     }
+    setIsSavingName(true);
+    setErrorMessage(null);
+    try {
+      await setDisplayName(pendingName.trim());
+    } catch {
+      setErrorMessage('Could not save your name. Try again.');
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
+  const createSquad = async () => {
+    if (!canCreate || !displayName) {
+      return;
+    }
+    const name = displayName.trim();
     setIsCreating(true);
     setErrorMessage(null);
     try {
       const api = createDefaultRoomApi();
       const { roomId } = await api.createRoom();
-      const credentials = await api.joinRoom(roomId, normalizedName);
+      const credentials = await api.joinRoom(roomId, name);
       const inviteLink = createInviteLink(roomId);
       setSession({ credentials, inviteLink });
       router.replace({ pathname: '/room/[roomId]', params: { roomId } });
@@ -54,30 +72,74 @@ export default function HomeScreen() {
     router.push({ pathname: '/join/[roomId]', params: { roomId: normalizedRoomCode } });
   };
 
+  if (!isReady) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Text style={styles.subtitle}>Loading…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!displayName) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <View style={styles.heading}>
+            <Text style={styles.eyebrow}>BGMI SQUAD COMMS</Text>
+            <Text style={styles.title}>zero-ji-ka-hukum</Text>
+            <Text style={styles.subtitle}>Pick a name for your squad.</Text>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Choose your username</Text>
+            <Text style={styles.label}>Your name</Text>
+            <TextInput
+              accessibilityLabel="Your name"
+              autoCapitalize="words"
+              autoComplete="nickname"
+              maxLength={24}
+              onChangeText={setPendingName}
+              placeholder="Enter a name"
+              placeholderTextColor="#91A39A"
+              returnKeyType="done"
+              style={styles.input}
+              value={pendingName}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isSavingName ? 'Saving name' : 'Continue'}
+              accessibilityState={{ disabled: !canSaveName }}
+              disabled={!canSaveName}
+              onPress={() => void saveName()}
+              style={({ pressed }) => [styles.primaryButton, (!canSaveName || pressed) && styles.buttonMuted]}
+            >
+              <Text style={styles.primaryButtonText}>{isSavingName ? 'Saving…' : 'Continue'}</Text>
+            </Pressable>
+          </View>
+
+          {errorMessage ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {errorMessage}
+            </Text>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.heading}>
           <Text style={styles.eyebrow}>BGMI SQUAD COMMS</Text>
           <Text style={styles.title}>zero-ji-ka-hukum</Text>
-          <Text style={styles.subtitle}>Get your squad in sync.</Text>
+          <Text style={styles.subtitle}>Playing as {displayName}. Get your squad in sync.</Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Create a private room</Text>
-          <Text style={styles.label}>Your name</Text>
-          <TextInput
-            accessibilityLabel="Your name"
-            autoCapitalize="words"
-            autoComplete="nickname"
-            maxLength={24}
-            onChangeText={setDisplayName}
-            placeholder="Enter a name"
-            placeholderTextColor="#91A39A"
-            returnKeyType="done"
-            style={styles.input}
-            value={displayName}
-          />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={isCreating ? 'Creating room' : 'Create squad'}

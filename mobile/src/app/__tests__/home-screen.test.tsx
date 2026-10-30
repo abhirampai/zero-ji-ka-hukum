@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Text } from 'react-native';
 
 import { RoomSessionProvider, useRoomSession } from '@/features/room/RoomSessionContext';
+import { DisplayNameProvider } from '@/features/profile/DisplayNameContext';
 import HomeScreen from '../index';
 
 jest.mock('expo-router', () => {
@@ -59,9 +60,11 @@ describe('HomeScreen', () => {
   it('uses the non-deprecated safe-area layout', async () => {
     const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     await render(
-      <RoomSessionProvider>
+      <DisplayNameProvider>
+        <RoomSessionProvider>
         <HomeScreen />
-      </RoomSessionProvider>,
+      </RoomSessionProvider>
+      </DisplayNameProvider>,
     );
 
     expect(warning).not.toHaveBeenCalledWith(
@@ -72,10 +75,12 @@ describe('HomeScreen', () => {
 
   it('shows the configured app name', async () => {
     const screen = await render(
-      <RoomSessionProvider>
+      <DisplayNameProvider>
+        <RoomSessionProvider>
         <HomeScreen />
         <SessionProbe />
-      </RoomSessionProvider>,
+      </RoomSessionProvider>
+      </DisplayNameProvider>,
     );
 
     expect(screen.getByText('zero-ji-ka-hukum')).toBeTruthy();
@@ -88,13 +93,19 @@ describe('HomeScreen', () => {
       .mockResolvedValueOnce(jsonResponse(200, joinResponse));
     globalThis.fetch = fetcher as unknown as typeof fetch;
     const screen = await render(
-      <RoomSessionProvider>
+      <DisplayNameProvider>
+        <RoomSessionProvider>
         <HomeScreen />
         <SessionProbe />
-      </RoomSessionProvider>,
+      </RoomSessionProvider>
+      </DisplayNameProvider>,
     );
 
     await fireEvent.changeText(screen.getByLabelText('Your name'), 'Ace');
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Create squad' })).toBeTruthy();
+    });
     await fireEvent.press(screen.getByRole('button', { name: 'Create squad' }));
 
     await waitFor(() => {
@@ -120,10 +131,18 @@ describe('HomeScreen', () => {
 
   it('opens the guest form for a valid pasted invite code', async () => {
     const screen = await render(
-      <RoomSessionProvider>
+      <DisplayNameProvider>
+        <RoomSessionProvider>
         <HomeScreen />
-      </RoomSessionProvider>,
+      </RoomSessionProvider>
+      </DisplayNameProvider>,
     );
+
+    await fireEvent.changeText(screen.getByLabelText('Your name'), 'Ace');
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Room invite code')).toBeTruthy();
+    });
 
     await fireEvent.changeText(screen.getByLabelText('Room invite code'), roomId);
     await fireEvent.press(screen.getByRole('button', { name: 'Join with code' }));

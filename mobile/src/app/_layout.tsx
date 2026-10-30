@@ -7,6 +7,7 @@ import {
 
 import { CallForegroundService } from '@/platform/call-foreground-service';
 import { RoomSessionProvider } from '@/features/room/RoomSessionContext';
+import { DisplayNameProvider } from '@/features/profile/DisplayNameContext';
 
 // Automatic session setup is disabled so the explicit policy below is the
 // single source of truth for the AVAudioSession category/mode.
@@ -33,8 +34,10 @@ CallForegroundService.setup();
 
 export default function RootLayout() {
   return (
-    <RoomSessionProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </RoomSessionProvider>
+    <DisplayNameProvider>
+      <RoomSessionProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </RoomSessionProvider>
+    </DisplayNameProvider>
   );
 }
