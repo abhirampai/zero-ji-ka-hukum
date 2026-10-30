@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: zero-ji-ka-hukum-api
+    runtime: node
+    plan: free
+    buildCommand: npm install --workspace @bgmi/server
+    startCommand: npm run start --workspace @bgmi/server
+    healthCheckPath: /healthz
+    envVars:
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: NODE_VERSION
+        value: 20

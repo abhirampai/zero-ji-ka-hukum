@@ -21,6 +21,7 @@ Cross-platform voice chat for BGMI squads of up to four players.
 cp server/.env.example server/.env   # then fill in real LiveKit credentials
 npm install
 npm run dev --workspace @bgmi/server # Fastify on :3000 (PORT overridable)
+npm run start --workspace @bgmi/server # production-style run (tsx)
 ```
 
 The server validates its environment at startup and fails fast with a clear
@@ -29,6 +30,21 @@ or malformed. `LIVEKIT_URL` must be `wss://…`. Real credentials belong in your
 shell/secrets manager — never in commits, and never in any Expo public
 variable. Guest phones only ever receive short-lived audio-only tokens issued
 by the server.
+
+## Deploying the server (Render, free tier)
+
+A `render.yaml` blueprint is included for one-click deploy:
+
+1. Push this repo to GitHub (already done).
+2. In Render → **New → Blueprint** → select the repo. Render reads `render.yaml`.
+3. Set the three secret env vars in the Render dashboard:
+   `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
+4. Deploy. The service exposes `/healthz` for Render's health check.
+
+The free tier sleeps after 15 minutes of inactivity; the first request wakes
+it (≈30–60s). For an always-on free option, use Fly.io instead. For zero
+cold starts on a paid tier, any long-running Node host works with
+`npm run start --workspace @bgmi/server`.
 
 ## Mobile setup
 
