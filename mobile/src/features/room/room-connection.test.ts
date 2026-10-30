@@ -51,6 +51,58 @@ describe('RoomConnection', () => {
     });
   });
 
+  it('starts the Android foreground notification only while connected', async () => {
+    const driver = new FakeRoomDriver();
+    const foregroundService = {
+      start: jest.fn(async () => undefined),
+      stop: jest.fn(async () => undefined),
+    };
+    const connection = new RoomConnection(driver, foregroundService);
+
+    await connection.connect(credentials);
+    expect(foregroundService.start).toHaveBeenCalledTimes(1);
+    expect(foregroundService.stop).not.toHaveBeenCalled();
+
+    await connection.disconnect();
+    expect(foregroundService.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the foreground notification for receive-only guests and stops it on failure', async () => {
+    const denied = new FakeRoomDriver();
+    denied.setMicrophoneEnabled.mockRejectedValueOnce(
+      Object.assign(new Error('Microphone permission denied'), { name: 'NotAllowedError' }),
+    );
+    const deniedService = {
+      start: jest.fn(async () => undefined),
+      stop: jest.fn(async () => undefined),
+    };
+    await new RoomConnection(denied, deniedService).connect(credentials);
+    expect(deniedService.start).toHaveBeenCalledTimes(1);
+
+    const failed = new FakeRoomDriver();
+    failed.connect.mockRejectedValueOnce(new Error('room is full'));
+    const failedService = {
+      start: jest.fn(async () => undefined),
+      stop: jest.fn(async () => undefined),
+    };
+    const failedConnection = new RoomConnection(failed, failedService);
+    await expect(failedConnection.connect(credentials)).rejects.toThrow();
+    expect(failedService.start).not.toHaveBeenCalled();
+  });
+
+  it('stops the foreground notification when the server drops the connection', async () => {
+    const driver = new FakeRoomDriver();
+    const foregroundService = {
+      start: jest.fn(async () => undefined),
+      stop: jest.fn(async () => undefined),
+    };
+    const connection = new RoomConnection(driver, foregroundService);
+    await connection.connect(credentials);
+
+    driver.emit({ type: 'disconnected' });
+    expect(foregroundService.stop).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps a guest connected receive-only after microphone permission is denied', async () => {
     const driver = new FakeRoomDriver();
     driver.setMicrophoneEnabled.mockRejectedValueOnce(

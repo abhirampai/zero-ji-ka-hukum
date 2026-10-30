@@ -1,11 +1,18 @@
 import type { JoinRoomResponse } from '@bgmi/contracts';
 
 import { applyMicrophonePermission } from './RoomState';
+import { CallForegroundService } from '../../platform/call-foreground-service';
 
 export type RoomConnectionErrorCode =
   | 'room_full'
   | 'microphone_permission_denied'
   | 'connection_failed';
+
+/** Keeps voice alive in the background; no-op off Android. */
+export interface ForegroundServiceLike {
+  start(options?: { microphoneGranted: boolean }): Promise<void>;
+  stop(): Promise<void>;
+}
 
 export interface RoomParticipant {
   identity: string;
@@ -70,8 +77,12 @@ export class RoomConnection {
   private snapshot: RoomConnectionSnapshot = initialSnapshot();
   private readonly listeners = new Set<(snapshot: RoomConnectionSnapshot) => void>();
   private readonly unsubscribeDriver: () => void;
+  private foregroundServiceRunning = false;
 
-  constructor(private readonly driver: LiveKitRoomDriver) {
+  constructor(
+    private readonly driver: LiveKitRoomDriver,
+    private readonly foregroundService: ForegroundServiceLike = CallForegroundService,
+  ) {
     this.unsubscribeDriver = driver.subscribe((event) => this.handleDriverEvent(event));
   }
 
@@ -91,6 +102,7 @@ export class RoomConnection {
       await this.driver.connect(credentials.serverUrl, credentials.token);
       this.update({ state: 'connected', errorCode: undefined });
       await this.setMicrophoneEnabled(true);
+      await this.startForegroundService();
     } catch (error) {
       const code = isRoomFullError(error) ? 'room_full' : 'connection_failed';
       this.update({ state: 'error', errorCode: code, localMicrophoneEnabled: false });
@@ -106,6 +118,9 @@ export class RoomConnection {
         localMicrophoneEnabled: enabled,
         errorCode: undefined,
       });
+      if (this.foregroundServiceRunning) {
+        await this.startForegroundService();
+      }
     } catch (error) {
       if (enabled && isMicrophonePermissionError(error)) {
         this.update({
@@ -128,6 +143,8 @@ export class RoomConnection {
     try {
       await this.driver.disconnect();
     } finally {
+      this.foregroundServiceRunning = false;
+      await this.foregroundService.stop();
       this.update({ ...initialSnapshot(), errorCode: undefined });
     }
   }
@@ -155,6 +172,8 @@ export class RoomConnection {
         break;
       case 'disconnected':
         this.update({ state: 'error', errorCode: 'connection_failed' });
+        this.foregroundServiceRunning = false;
+        void this.foregroundService.stop();
         break;
     }
   }
@@ -163,6 +182,17 @@ export class RoomConnection {
     this.snapshot = { ...this.snapshot, ...patch };
     for (const listener of this.listeners) {
       listener(this.snapshot);
+    }
+  }
+
+  private async startForegroundService(): Promise<void> {
+    this.foregroundServiceRunning = true;
+    try {
+      await this.foregroundService.start({
+        microphoneGranted: this.snapshot.localMicrophoneEnabled,
+      });
+    } catch {
+      // The ongoing Android notification must never block the voice session.
     }
   }
 }

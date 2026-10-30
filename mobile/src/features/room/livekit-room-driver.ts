@@ -1,4 +1,4 @@
-import { AudioSession } from '@livekit/react-native';
+import { AndroidAudioTypePresets, AudioSession } from '@livekit/react-native';
 import { Room, RoomEvent } from 'livekit-client';
 
 import type {
@@ -38,6 +38,10 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
   }
 
   async connect(serverUrl: string, token: string): Promise<void> {
+    // media audio mode keeps BGMI's own volume healthy while squad audio plays.
+    await AudioSession.configureAudio({
+      android: { audioTypeOptions: AndroidAudioTypePresets.media },
+    });
     await AudioSession.startAudioSession();
     this.audioSessionStarted = true;
     try {

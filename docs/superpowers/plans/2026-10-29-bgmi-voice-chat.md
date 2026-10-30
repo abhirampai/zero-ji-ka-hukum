@@ -348,23 +348,23 @@ git commit -m "feat: add LiveKit voice room controls"
 - Native config must enable the iOS audio background mode and the Android microphone foreground service with the required persistent notification while a call is active.
 - `CallForegroundService.start(): Promise<void>` and `CallForegroundService.stop(): Promise<void>`; room connect/disconnect starts/stops it on Android only.
 
-- [ ] **Step 1: Verify required generated native settings before changing them**
+- [x] **Step 1: Verify required generated native settings before changing them**
 
 Run: `npx expo config --type prebuild` from `mobile/` and inspect the resolved app config/plugin inputs. Then run `npx expo prebuild --no-install` (without `--clean`) to generate ignored native projects and inspect the resulting iOS background modes, microphone usage description, Android permissions, and service declaration.
 
-Expected: record missing settings; do not use a destructive clean-prebuild command.
+Recorded gaps: no iOS `UIBackgroundModes`/`audio`; no `NSMicrophoneUsageDescription`; no `POST_NOTIFICATIONS`/`FOREGROUND_SERVICE*` Android permissions and no typed service declaration; `RECORD_AUDIO` and camera block already correct.
 
-- [ ] **Step 2: Add a config assertion/check for background audio settings**
+- [x] **Step 2: Add a config assertion/check for background audio settings**
 
 Test the resolved app config so iOS includes the `audio` background mode and microphone usage description, and Android includes microphone permission, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_MICROPHONE`/`FOREGROUND_SERVICE_MEDIA_PLAYBACK`, and the foreground-service declaration with `microphone|mediaPlayback` types. Test that the Android service helper starts only for an active room and stops after disconnect, and that the config plugin adds the service and permissions to an Android manifest fixture.
 
-- [ ] **Step 3: Run the config check and verify it fails for missing settings**
+- [x] **Step 3: Run the config check and verify it fails for missing settings**
 
-Run: `npm test --workspace @bgmi/mobile -- background-audio-config`
+Run: `npm test --workspace @bgmi/mobile -- app.config call-foreground-service withCallForegroundService room-connection`
 
-Expected: FAIL until native config is explicit.
+Expected: FAIL until native config is explicit. (Observed: 4 suites failed pre-implementation.)
 
-- [ ] **Step 4: Implement platform audio configuration**
+- [x] **Step 4: Implement platform audio configuration**
 
 Create `mobile/app.config.ts` with the app scheme, microphone purpose string, LiveKit Expo plugins, and iOS `audio` background mode. Configure `@livekit/react-native-expo-plugin` with Android `audioType: "media"` to preserve game-audio volume, then call `AudioSession.configureAudio` before `AudioSession.startAudioSession` and connect. On iOS, disable automatic session setup and call `setupIOSAudioManagement` once with recording category `playAndRecord`, options `allowBluetooth` and `mixWithOthers`, mode `voiceChat`; use playout category `playback`, option `mixWithOthers`, mode `spokenAudio`. Do not add incoming-call/VoIP push behavior to this MVP. Add `@supersami/rn-foreground-service` and a local Expo config plugin to declare `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, plus its service with `microphone|mediaPlayback` types; start that service only while joined and stop it on leave/disconnect. Show an ongoing notification while the call is backgrounded. Request microphone permission and, on Android 13+, notification permission for the ongoing call notification.
 
@@ -373,6 +373,8 @@ Create `mobile/app.config.ts` with the app scheme, microphone purpose string, Li
 Run: `npm test --workspace @bgmi/mobile -- background-audio-config && npx expo run:ios && npx expo run:android`
 
 Expected: config tests pass and development builds compile. If a platform toolchain/device is unavailable, record it as an external validation blocker rather than claiming the platform passed.
+
+Status: config tests pass, Metro bundles export for both platforms, and generated native config verified via `expo prebuild --no-install`. `expo run:ios`/`run:android` are **blocked externally** — no Xcode and no Android SDK/adb on the build machine.
 
 - [ ] **Step 6: Execute physical-device BGMI handoff checks**
 

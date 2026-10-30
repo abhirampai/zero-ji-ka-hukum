@@ -5,14 +5,26 @@ import { NativeLiveKitRoomDriver } from './livekit-room-driver';
 const mockAudioSession = {
   startAudioSession: jest.fn(async () => undefined),
   stopAudioSession: jest.fn(async () => undefined),
+  configureAudio: jest.fn(async (_config?: unknown) => undefined),
 };
 
 const mockRoomState: { current: any } = { current: undefined };
 
 jest.mock('@livekit/react-native', () => ({
+  AndroidAudioTypePresets: {
+    media: {
+      manageAudioFocus: true,
+      audioMode: 'normal',
+      audioFocusMode: 'gain',
+      audioStreamType: 'music',
+      audioAttributesUsageType: 'media',
+      audioAttributesContentType: 'unknown',
+    },
+  },
   AudioSession: {
     startAudioSession: () => mockAudioSession.startAudioSession(),
     stopAudioSession: () => mockAudioSession.stopAudioSession(),
+    configureAudio: (config: unknown) => mockAudioSession.configureAudio(config),
   },
 }));
 
@@ -54,6 +66,9 @@ describe('NativeLiveKitRoomDriver', () => {
 
   it('starts the native audio session before connecting and stops it after disconnect', async () => {
     const order: string[] = [];
+    mockAudioSession.configureAudio.mockImplementation(async () => {
+      order.push('audio-configure');
+    });
     mockAudioSession.startAudioSession.mockImplementation(async () => {
       order.push('audio-start');
     });
@@ -65,7 +80,14 @@ describe('NativeLiveKitRoomDriver', () => {
     await driver.connect('wss://voice.example.test', 'signed-token');
     await driver.disconnect();
 
-    expect(order).toEqual(['audio-start', 'room-connect']);
+    expect(order).toEqual(['audio-configure', 'audio-start', 'room-connect']);
+    expect(mockAudioSession.configureAudio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        android: expect.objectContaining({
+          audioTypeOptions: expect.objectContaining({ audioMode: 'normal' }),
+        }),
+      }),
+    );
     expect(mockRoomState.current.disconnect).toHaveBeenCalledTimes(1);
     expect(mockAudioSession.stopAudioSession).toHaveBeenCalledTimes(1);
   });
