@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
@@ -97,6 +98,17 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
       });
     } catch {
       setControlError('Could not open the share sheet.');
+    }
+  };
+
+  const onCopyCode = async () => {
+    if (!roomId) {
+      return;
+    }
+    try {
+      await Clipboard.setStringAsync(roomId);
+    } catch {
+      setControlError('Could not copy the room code.');
     }
   };
 
@@ -278,6 +290,16 @@ export function RoomScreen({ connection, snapshot, onLeave, roomId, inviteLink }
               {snapshot.localMicrophoneEnabled ? 'Mute mic' : 'Enable mic'}
             </Text>
           </Pressable>
+          {roomId ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Copy room code"
+              onPress={() => void onCopyCode()}
+              style={styles.shareButton}
+            >
+              <Text style={styles.shareButtonText}>Copy code</Text>
+            </Pressable>
+          ) : null}
           {roomId ? (
             <Pressable
               accessibilityRole="button"

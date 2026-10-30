@@ -71,29 +71,60 @@ export class NativeLiveKitRoomDriver implements LiveKitRoomDriver {
   }
 
   async listAudioInputDevices(): Promise<{ deviceId: string; label: string }[]> {
+    const collect = async (enumerator?: () => Promise<{ kind: string; deviceId: string; label?: string }[]>) => {
+      if (typeof enumerator !== 'function') {
+        return [] as { deviceId: string; label: string }[];
+      }
+      try {
+        const devices = await enumerator();
+        if (!Array.isArray(devices)) {
+          return [] as { deviceId: string; label: string }[];
+        }
+        return devices
+          .filter((device) => device.kind === 'audioinput')
+          .map((device, index) => ({
+            deviceId: device.deviceId || `default-${index}`,
+            label: device.label || `Microphone ${index + 1}`,
+          }));
+      } catch {
+        return [] as { deviceId: string; label: string }[];
+      }
+    };
+
+    let result: { deviceId: string; label: string }[] = [];
     try {
-      // Lazy-load to keep non-native/test environments working.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const webrtc = require('@livekit/react-native-webrtc') as {
         mediaDevices?: { enumerateDevices: () => Promise<{ kind: string; deviceId: string; label?: string }[]> };
       };
-      const devices = await webrtc.mediaDevices?.enumerateDevices?.();
-      if (!Array.isArray(devices)) {
-        return [];
-      }
-      return devices
-        .filter((device) => device.kind === 'audioinput')
-        .map((device, index) => ({
-          deviceId: device.deviceId,
-          label: device.label || `Microphone ${index + 1}`,
-        }));
+      result = await collect(webrtc.mediaDevices?.enumerateDevices?.bind(webrtc.mediaDevices));
     } catch {
-      return [];
+      result = [];
     }
+
+    if (result.length === 0 && typeof navigator !== 'undefined') {
+      const nav = navigator as { mediaDevices?: { enumerateDevices?: () => Promise<{ kind: string; deviceId: string; label?: string }[]> } };
+      if (nav.mediaDevices?.enumerateDevices) {
+        result = await collect(nav.mediaDevices.enumerateDevices.bind(nav.mediaDevices));
+      }
+    }
+
+    if (result.length === 0) {
+      result = [{ deviceId: 'default', label: 'Default microphone' }];
+    }
+
+    return result;
   }
 
   async setAudioInputDevice(deviceId: string): Promise<void> {
-    await this.room.switchActiveDevice('audioinput', deviceId);
+    if (!deviceId || deviceId === 'default') {
+      return;
+    }
+    try {
+      await this.room.switchActiveDevice('audioinput', deviceId);
+    } catch {
+      // Switching inputs is best-effort; keep the current device.
+    }
   }
 
   private readonly onReconnecting = () => this.emit({ type: 'reconnecting' });
